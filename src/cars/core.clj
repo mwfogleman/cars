@@ -1,67 +1,60 @@
 (ns cars.core
   (:require [cheshire.core :refer :all]
             [clj-http.client :as client]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [com.rpl.specter :as S])
   (:gen-class))
 
-;; get model year
-;; get make
-;; get model
-;; get vehicle id from api
-;; get safety ratings from vehicle id through api
-
 (def base-url "http://www.nhtsa.gov/webapi/api/SafetyRatings")
-(def year "/modelyear/2005")
-(def make "/make/honda")
-(def model "/model/insight")
-(def format-string "/?format=json")
-(def car-url (str/join [base-url year make model format-string])) ;;  "http://www.nhtsa.gov/webapi/api/SafetyRatings/modelyear/2005/make/honda/model/insight/?format=json"
+(def format-string "?format=json")
 
-(def car-result (client/get car-url))
+(def joiner (partial str/join "/"))
 
-(keys car-result) ;; (:request-time :repeatable? :protocol-version :streaming? :chunked? :reason-phrase :headers :orig-content-encoding :status :length :body :trace-redirects)
+(defn getter
+  [url]
+  (client/get url {:as :json}))
 
-(def id (-> car-result
-            (get :body)
-            parse-string
-            (get "Results")
-            first
-            (get "VehicleId")))
+(S/declarepath REQ-BODY)
+(S/providepath REQ-BODY [:body :Results S/FIRST])
 
-(def safety-url (str/join [base-url "/vehicleid/" id "/" format-string]))
+(defn year-slug
+  [year]
+  (joiner ["modelyear" year]))
 
-(def safety-result (client/get safety-url))
+(defn make-slug
+  [make]
+  (joiner ["make" make]))
 
-(def safety-parsed (into (sorted-map) (-> safety-result
-                                          (get :body)
-                                          parse-string
-                                          (get "Results")
-                                          first)))
+(defn model-slug
+  [model]
+  (joiner ["model" model]))
 
-;; from urllib2 import urlopen
-;; from json import load
+(defn vehicle-slug
+  [id]
+  (joiner ["vehicleid" id]))
 
-;; apiUrl = "http://www.nhtsa.gov/webapi/api/SafetyRatings"
-;; apiParam = "/vehicleid/10860/"
-;; outputFormat = "?format=json"
+(defn combine-slugs
+  [& slugs]
+  (->> [base-url slugs format-string]
+       flatten
+       joiner))
 
-;; #Combine all three variables to make up the complete request URL
-;; response = urlopen(apiUrl + apiParam + outputFormat)
+(defn get-car-vehicle-id
+  [year make model]
+  (let [url     (combine-slugs (year-slug year) (make-slug make) (model-slug model))
+        request (getter url)]
+    (S/select-any [REQ-BODY :VehicleId] request)))
 
-;; #code below is only to handle JSON response object/format
-;; #use equivalent sets of commands to handle xml response object/format
-;; json_obj = load(response)
+(defn get-vehicle-safety-results
+  [id]
+  (let [url     (combine-slugs (vehicle-slug id))
+        request (getter url)]
+    (S/select-any [REQ-BODY] request)))
 
-;; #Load the Result (vehicle collection) from the JSON response
-;; print '------------------------------'
-;; print '           Result			 '
-;; print '------------------------------'
-;; for objectCollection in json_obj['Results']:
-;; # Loop each vehicle in the vehicles collection
-;; for safetyRatingAttribute, safetyRatingValue in objectCollection.iteritems():
-;; print safetyRatingAttribute, ": ", safetyRatingValue
-
-;; # After running this example, feel free to explore the results below
+(defn get-car-safety-results
+  [year make model]
+  (->> (get-car-vehicle-id year make model)
+       get-vehicle-safety-results))
 
 (defn -main
   "I don't do a whole lot ... yet."
