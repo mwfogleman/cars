@@ -18,18 +18,6 @@
 (S/declarepath REQ-BODY)
 (S/providepath REQ-BODY [:body :Results S/FIRST])
 
-(defn get-current-year
-  []
-  (->> (new java.util.Date)
-       (.format (java.text.SimpleDateFormat. "yyyy"))
-       Long.))
-
-(defn valid-year?
-  [year]
-  (let [mn 1990
-        mx (inc (get-current-year))]
-    (>= mx year mn)))
-
 (defn year-slug
   [year]
   (joiner ["modelyear" year]))
@@ -51,6 +39,16 @@
   (->> [base-url slugs format-string]
        flatten
        joiner))
+
+(defn get-current-year
+  []
+  (t/year (t/now)))
+
+(defn valid-year?
+  [year]
+  (let [mn 1990
+        mx (inc (get-current-year))] ;; or, for quicker results, 2018
+    (>= mx year mn)))
 
 (defn get-car-vehicle-id
   [year make model]
