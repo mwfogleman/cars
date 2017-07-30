@@ -40,8 +40,9 @@
 
 (defn valid-request?*
   [url]
-  (let [request (getter url)]
-    (> (S/select-any [:body :Count] request) 0)))
+  (let [request      (getter url)
+        result-count (S/select-any [:body :Count] request)]
+    (> result-count 0)))
 
 (defn valid-id?
   [id]
