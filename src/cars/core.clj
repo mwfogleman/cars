@@ -38,13 +38,19 @@
        flatten
        joiner))
 
-(defn valid-request?
+(defn valid-request?*
   [url]
   (let [request (getter url)]
     (> (S/select-any [:body :Count] request) 0)))
 
+(defn valid-request?
+  ([year] (valid-request?* (combine-slugs (year-slug year))))
+  ([year make] (valid-request?* (combine-slugs (year-slug year) (make-slug make))))
+  ([year make model] (valid-request?* (combine-slugs (year-slug year) (make-slug make) (model-slug model)))))
+
 (defn get-car-vehicle-id
   [year make model]
+  {:pre [(valid-request? year make model)]}
   (let [url     (combine-slugs (year-slug year) (make-slug make) (model-slug model))
         request (getter url)]
     (S/select-any [REQ-BODY :VehicleId] request)))
@@ -57,6 +63,7 @@
 
 (defn get-car-safety-results
   [year make model]
+  {:pre [(valid-request? year make model)]}
   (->> (get-car-vehicle-id year make model)
        get-vehicle-safety-results))
 
