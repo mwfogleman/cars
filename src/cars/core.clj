@@ -1,6 +1,7 @@
 (ns cars.core
   (:require [cheshire.core :refer :all]
             [clj-http.client :as client]
+            [clj-time.core :as t]
             [clojure.string :as str]
             [com.rpl.specter :as S])
   (:gen-class))
@@ -16,6 +17,18 @@
 
 (S/declarepath REQ-BODY)
 (S/providepath REQ-BODY [:body :Results S/FIRST])
+
+(defn get-current-year
+  []
+  (->> (new java.util.Date)
+       (.format (java.text.SimpleDateFormat. "yyyy"))
+       Long.))
+
+(defn valid-year?
+  [year]
+  (let [mn 1990
+        mx (inc (get-current-year))]
+    (>= mx year mn)))
 
 (defn year-slug
   [year]
