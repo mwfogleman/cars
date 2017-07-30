@@ -1,7 +1,5 @@
 (ns cars.core
-  (:require [cheshire.core :refer :all]
-            [clj-http.client :as client]
-            [clj-time.core :as t]
+  (:require [clj-http.client :as client]
             [clojure.string :as str]
             [com.rpl.specter :as S])
   (:gen-class))
@@ -40,15 +38,10 @@
        flatten
        joiner))
 
-(defn get-current-year
-  []
-  (t/year (t/now)))
-
-(defn valid-year?
-  [year]
-  (let [mn 1990
-        mx (inc (get-current-year))] ;; or, for quicker results, 2018
-    (>= mx year mn)))
+(defn valid-request?
+  [url]
+  (let [request (getter url)]
+    (> (S/select-any [:body :Count] request) 0)))
 
 (defn get-car-vehicle-id
   [year make model]
