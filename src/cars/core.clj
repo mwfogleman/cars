@@ -43,6 +43,10 @@
   (let [request (getter url)]
     (> (S/select-any [:body :Count] request) 0)))
 
+(defn valid-id?
+  [id]
+  (valid-request?* (combine-slugs (vehicle-slug id))))
+
 (defn valid-request?
   ([year] (valid-request?* (combine-slugs (year-slug year))))
   ([year make] (valid-request?* (combine-slugs (year-slug year) (make-slug make))))
@@ -57,6 +61,7 @@
 
 (defn get-vehicle-safety-results
   [id]
+  {:pre [(valid-id? id)]}
   (let [url     (combine-slugs (vehicle-slug id))
         request (getter url)]
     (S/select-any [REQ-BODY] request)))
