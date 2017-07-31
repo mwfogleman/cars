@@ -4,6 +4,10 @@
             [com.rpl.specter :as S])
   (:gen-class))
 
+(def min-year 1990)
+(def current-year (->> (new java.util.Date) (.format (java.text.SimpleDateFormat. "yyyy")) Long.))
+(def max-year (inc current-year))
+
 (def base-url "http://www.nhtsa.gov/webapi/api/SafetyRatings")
 (def format-string "?format=json")
 
@@ -15,6 +19,11 @@
 
 (S/declarepath REQ-BODY)
 (S/providepath REQ-BODY [:body :Results S/FIRST])
+
+(defn in?
+  "True if the collection contains the element."
+  [collection element]
+  (some #(= element %) collection))
 
 (defn year-slug
   [year]
@@ -38,7 +47,35 @@
        flatten
        joiner))
 
-(defn valid-request?*
+(defn get-makes
+  [year]
+  (let [url     (combine-slugs (year-slug year))
+        request (getter url)]
+    (S/select [:body :Results S/ALL :Make] request)))
+
+(defn get-models
+  [year make]
+  (let [url     (combine-slugs (year-slug year) (make-slug make))
+        request (getter url)]
+    (S/select [:body :Results S/ALL :Model] request)))
+
+(defn valid-year?
+  [year]
+  (>= max-year year min-year))
+
+(defn valid-make?
+  [year make]
+  {:pre [(valid-year? year)]}
+  (let [results (get-makes year)]
+    (in? (map str/lower-case results) (str/lower-case make))))
+
+(defn valid-model?
+  [year make model]
+  {:pre [(valid-make? year make)]}
+  (let [results (get-models year make)]
+    (in? (map str/lower-case results) (str/lower-case model))))
+
+(defn valid-request?
   [url]
   (let [request      (getter url)
         result-count (S/select-any [:body :Count] request)]
@@ -46,16 +83,13 @@
 
 (defn valid-id?
   [id]
-  (valid-request?* (combine-slugs (vehicle-slug id))))
-
-(defn valid-request?
-  ([year] (valid-request?* (combine-slugs (year-slug year))))
-  ([year make] (valid-request?* (combine-slugs (year-slug year) (make-slug make))))
-  ([year make model] (valid-request?* (combine-slugs (year-slug year) (make-slug make) (model-slug model)))))
+  (valid-request? (combine-slugs (vehicle-slug id))))
 
 (defn get-car-vehicle-id
   [year make model]
-  {:pre [(valid-request? year make model)]}
+  {:pre [(valid-year? year)
+         (valid-make? year make)
+         (valid-model? year make model)]}
   (let [url     (combine-slugs (year-slug year) (make-slug make) (model-slug model))
         request (getter url)]
     (S/select-any [REQ-BODY :VehicleId] request)))
@@ -69,7 +103,9 @@
 
 (defn get-car-safety-results
   [year make model]
-  {:pre [(valid-request? year make model)]}
+  {:pre [(valid-year? year)
+         (valid-make? year make)
+         (valid-model? year make model)]}
   (->> (get-car-vehicle-id year make model)
        get-vehicle-safety-results))
 
