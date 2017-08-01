@@ -109,6 +109,23 @@
   (->> (get-car-vehicle-id year make model)
        get-vehicle-safety-results))
 
+(defn media? [k]
+  {:pre [(keyword? k)]}
+  (let [n (name k)]
+    (and (or (some? (re-find #"Picture" n))
+             (some? (re-find #"Video" n)))
+         (not= k :NHTSARearviewVideoSystems))))
+
+(defn get-car-safety-media
+  [year make model]
+  {:pre [(valid-year? year)
+         (valid-make? year make)
+         (valid-model? year make model)]}
+  (let [results (get-car-safety-results year make model)
+        all-keys (keys results)
+        media-keys (filter media? all-keys)]
+    (select-keys results media-keys))) ;; crashmycar.com?? SP 07/31/17
+
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
